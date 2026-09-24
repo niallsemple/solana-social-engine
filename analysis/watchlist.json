@@ -1,0 +1,19 @@
+{
+  "as_of": "2026-09-22",
+  "basis": "discovery data only (per-token, deduped); forward validation pending",
+  "rug_suspects": [
+    {"account": "ChartMonstn9mw", "tokens": 3, "rugged": 2, "rug_share": 0.67,
+     "note": "2 of 3 called tokens rugged; treat calls as avoid until forward data clears them"}
+  ],
+  "smart_accounts_watch": [
+    {"account": "DegenWar01", "tokens": 4, "pump_share": 1.00, "rugs": 0},
+    {"account": "SOLANACHAD009", "tokens": 10, "pump_share": 0.50, "rugs": 1},
+    {"account": "AlphaPulsevw", "tokens": 6, "pump_share": 0.50, "rugs": 1},
+    {"account": "starofmartina", "tokens": 2, "pump_share": 0.80, "rugs": 0}
+  ],
+  "rules": [
+    "smart accounts are amplifiers, not insiders: some rug exposure exists (1 rug each for SOLANACHAD009/AlphaPulsevw)",
+    "rug timing is scripted (~8.7 min post-detection); exit rules do not dodge rugs",
+    "any account reaching >=2 rugged tokens joins rug_suspects"
+  ]
+}

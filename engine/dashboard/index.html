@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLANA MEMECOIN SOCIAL DISCOVERY ENGINE</title>
+<style>
+  :root { --bg:#0a0e14; --panel:#111722; --line:#1e2937; --fg:#d6e2f0; --dim:#6b7d93;
+          --green:#3ddc97; --red:#ff5c6c; --amber:#ffb454; --blue:#4da3ff; --purple:#b78cff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.45 "SF Mono",Menlo,Consolas,monospace; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
+  header h1 { font-size:15px; margin:0; letter-spacing:1px; }
+  header .tag { color:var(--amber); font-size:11px; border:1px solid var(--amber); padding:1px 6px; border-radius:3px; }
+  header .clock { margin-left:auto; color:var(--dim); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:1px; background:var(--line); border-bottom:1px solid var(--line); }
+  .card { background:var(--panel); padding:12px 14px; }
+  .card .k { color:var(--dim); font-size:10px; letter-spacing:.5px; text-transform:uppercase; }
+  .card .v { font-size:22px; margin-top:4px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:14px; padding:16px 20px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  section h2 { margin:0; padding:9px 12px; font-size:11px; letter-spacing:1px; color:var(--dim);
+               border-bottom:1px solid var(--line); text-transform:uppercase; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  td, th { padding:5px 10px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+  th { color:var(--dim); font-weight:normal; font-size:10px; text-transform:uppercase; }
+  tr:last-child td { border-bottom:none; }
+  .win { color:var(--green); } .loss { color:var(--red); } .flat { color:var(--dim); }
+  .state { font-size:10px; padding:1px 5px; border-radius:3px; border:1px solid var(--dim); color:var(--dim); }
+  .state.VIRAL, .state.ACCELERATING { border-color:var(--green); color:var(--green); }
+  .state.COORDINATED { border-color:var(--purple); color:var(--purple); }
+  .state.DEAD, .state.DECAYING { border-color:var(--red); color:var(--red); }
+  a { color:var(--blue); text-decoration:none; cursor:pointer; }
+  .mono { font-size:11px; }
+  #detail { position:fixed; inset:0; background:rgba(4,7,11,.92); display:none; overflow:auto; padding:30px; z-index:10; }
+  #detail .inner { max-width:1100px; margin:0 auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:20px; }
+  #detail canvas { width:100%; height:340px; background:var(--bg); border:1px solid var(--line); border-radius:4px; }
+  .close { float:right; cursor:pointer; color:var(--dim); }
+  .kv { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px 20px; margin:12px 0; }
+  .kv div { font-size:12px; } .kv span { color:var(--dim); display:block; font-size:10px; text-transform:uppercase; }
+  .err { color:var(--amber); }
+  .muted { color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>⛓ SOLANA MEMECOIN SOCIAL DISCOVERY ENGINE</h1>
+  <span class="tag">RESEARCH ONLY — NO TRADING</span>
+  <span class="clock" id="clock"></span>
+</header>
+<div class="cards" id="cards"></div>
+<div class="grid" id="grid"></div>
+
+<div id="detail"><div class="inner" id="detailInner"></div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmtPct = v => v == null ? "—" : (v*100).toFixed(1) + "%";
+const fmt$ = v => v == null ? "—" : "$" + Number(v).toPrecision(4);
+const fmtN = (v,d=0) => v == null ? "—" : Number(v).toFixed(d);
+const ago = ts => { const s=(Date.now()/1000)-ts; if(s<60)return s|0+"s"; if(s<3600)return (s/60)|0+"m"; if(s<86400)return (s/3600)|0+"h"; return (s/86400)|0+"d"; };
+const cls = c => c==="WIN"?"win":c==="LOSS"||c==="RUGGED"?"loss":"flat";
+
+async function api(p){ const r = await fetch(p); return r.json(); }
+
+function card(k,v,extra=""){ return `<div class="card"><div class="k">${k}</div><div class="v ${extra}">${v}</div></div>`; }
+
+async function loadOverview(){
+  const o = await api("/api/stats/overview");
+  $("#cards").innerHTML =
+    card("Tokens discovered today", o.tokens_today ?? 0) +
+    card("Total calls today", o.calls_today ?? 0) +
+    card("X calls", o.x_calls ?? 0) +
+    card("Telegram calls", o.tg_calls ?? 0) +
+    card("Net wins", o.net_wins ?? 0, "win") +
+    card("Net losses", o.net_losses ?? 0, "loss") +
+    card("Net win rate", fmtPct(o.net_win_rate)) +
+    card("Median 15m return", fmtPct(o.median_15m_return)) +
+    card("Avg 15m return", fmtPct(o.avg_15m_return)) +
+    card("Median MFE", fmtPct(o.median_mfe), "win") +
+    card("Median MAE", fmtPct(o.median_mae), "loss") +
+    card("Rug/dead rate", fmtPct(o.rug_dead_rate)) +
+    card("Unpriceable rate", fmtPct(o.unpriceable_rate)) +
+    card("Price error rate", fmtPct(o.price_error_rate));
+}
+
+function tbl(headers, rows){
+  return `<table><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr>${rows.join("")}</table>`;
+}
+const shortMint = m => m ? m.slice(0,6)+"…"+m.slice(-4) : "";
+
+async function loadSections(){
+  const [disc, viral, pushes, early, xlead, tglead, clusters, lex, alerts, quality] = await Promise.all([
+    api("/api/discoveries/recent?limit=15"), api("/api/tokens/viral"), api("/api/pushes/active"),
+    api("/api/leaders/early"), api("/api/leaders/x"), api("/api/leaders/telegram"),
+    api("/api/clusters/performance"), api("/api/lexicon"), api("/api/alerts"), api("/api/quality"),
+  ]);
+  const g = $("#grid");
+  g.innerHTML = "";
+
+  g.innerHTML += `<section><h2>Live discoveries</h2>${tbl(["mint","state","X","TG","velocity","age"],
+    disc.map(d=>`<tr><td><a onclick="showToken('${d.mint}')">${shortMint(d.mint)}</a> <span class="muted">${d.symbol||""}</span></td>
+    <td><span class="state ${d.current_state}">${d.current_state||"—"}</span></td><td>${d.total_x_mentions??0}</td>
+    <td>${d.total_tg_mentions??0}</td><td>${fmtN(d.mention_velocity,2)}/m</td><td>${ago(d.first_seen_ts)}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Most viral tokens</h2>${tbl(["mint","virality","mpm","acct","chan","orig%"],
+    viral.map(v=>`<tr><td><a onclick="showToken('${v.mint}')">${shortMint(v.mint)}</a></td><td>${fmtN(v.virality_score,1)}</td>
+    <td>${fmtN(v.mentions_per_min,2)}</td><td>${v.unique_accounts}</td><td>${v.unique_channels}</td><td>${fmtPct(v.original_ratio)}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Active social pushes</h2>${tbl(["mint","state","mentions","callers","velocity"],
+    pushes.map(p=>`<tr><td><a onclick="showToken('${p.mint}')">${shortMint(p.mint)}</a></td>
+    <td><span class="state ${p.current_state}">${p.current_state}</span></td><td>${p.total_mentions}</td>
+    <td>${p.unique_x_accounts+p.unique_tg_channels}</td><td>${fmtN(p.mention_velocity,2)}/m</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Top early discoverers</h2>${tbl(["account","role","calls","win%","med15m","avg pos","% pre-peak"],
+    early.map(a=>`<tr><td><a onclick="showAccount('${a.platform}','${a.account_ref}')">@${a.account_ref}</a></td>
+    <td>${a.role_label||"—"}</td><td>${a.sample_size}</td><td class="${cls(a.net_win_rate>0.5?'WIN':'LOSS')}">${fmtPct(a.net_win_rate)}</td>
+    <td>${fmtPct(a.median_return_15m)}</td><td>${fmtN(a.avg_position_in_cycle,1)}</td><td>${fmtPct(a.pct_calls_before_price_peak)}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>X account performance</h2>${tbl(["account","calls","win%","med15m","MFE","MAE"],
+    xlead.map(a=>`<tr><td><a onclick="showAccount('x','${a.account_ref}')">@${a.account_ref}</a></td><td>${a.sample_size}</td>
+    <td>${fmtPct(a.net_win_rate)}</td><td>${fmtPct(a.median_return_15m)}</td><td class="win">${fmtPct(a.avg_mfe)}</td><td class="loss">${fmtPct(a.avg_mae)}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Telegram channel performance</h2>${tbl(["channel","calls","win%","med15m","MFE"],
+    tglead.map(a=>`<tr><td><a onclick="showAccount('telegram','${a.account_ref}')">@${a.account_ref}</a></td><td>${a.sample_size}</td>
+    <td>${fmtPct(a.net_win_rate)}</td><td>${fmtPct(a.median_return_15m)}</td><td class="win">${fmtPct(a.avg_mfe)}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Social clusters (coordinated)</h2>${tbl(["cluster","members","sample","avg net15m","med net15m"],
+    clusters.map(c=>`<tr><td>#${c.cluster_id}</td><td>${c.members.length}</td><td>${c.sample}</td>
+    <td>${fmtPct(c.avg_net_15m)}</td><td>${fmtPct(c.median_net_15m)}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Discovery lexicon</h2>${tbl(["term","posts","with CA","new tokens","precision","status"],
+    lex.slice(0,15).map(l=>`<tr><td>${l.term}</td><td>${l.number_of_posts_found}</td><td>${l.number_containing_valid_ca}</td>
+    <td>${l.number_leading_to_new_tokens}</td><td>${fmtPct(l.precision_score)}</td><td>${l.status}</td></tr>`))}</section>`;
+
+  g.innerHTML += `<section><h2>Research alerts</h2>${tbl(["kind","mint","when"],
+    alerts.slice(0,15).map(a=>`<tr><td>${a.kind}</td><td><a onclick="showToken('${a.mint}')">${shortMint(a.mint)}</a></td><td>${ago(a.ts)} ago</td></tr>`))}</section>`;
+
+  const qRows = (quality.issues||[]).slice(0,10).map(i=>`<tr><td class="err">${i.issue}</td><td>${i.ref_id||""}</td><td class="mono">${(i.detail||"").slice(0,60)}</td></tr>`)
+    .concat((quality.price_error_breakdown||[]).map(e=>`<tr><td class="err">price:${e.error_code}</td><td>${e.n}</td><td></td></tr>`));
+  g.innerHTML += `<section><h2>Data quality</h2>${tbl(["issue","ref","detail"], qRows)}</section>`;
+}
+
+async function showToken(mint){
+  const [tok, tl] = await Promise.all([api("/api/token/"+mint), api("/api/token/"+mint+"/timeline")]);
+  if(!tok || tok.error) return;
+  const ev = tok.event || {};
+  $("#detail").style.display = "block";
+  $("#detailInner").innerHTML = `
+    <span class="close" onclick="document.getElementById('detail').style.display='none'">✕ close</span>
+    <h2 class="mono">${mint}</h2>
+    <div class="kv">
+      <div><span>state</span><span class="state ${ev.current_state}">${ev.current_state||"—"}</span></div>
+      <div><span>first seen</span>${new Date(tok.first_seen_ts*1000).toLocaleTimeString()}</div>
+      <div><span>price @ detection</span>${fmt$(ev.price_at_first_detection)}</div>
+      <div><span>peak price</span>${fmt$(ev.peak_price)}</div>
+      <div><span>X mentions</span>${ev.total_x_mentions??0} (${ev.unique_x_accounts??0} accts)</div>
+      <div><span>TG mentions</span>${ev.total_tg_mentions??0} (${ev.unique_tg_channels??0} chan)</div>
+      <div><span>mention velocity</span>${fmtN(ev.mention_velocity,2)}/min</div>
+      <div><span>virality</span>${tok.virality ? fmtN(tok.virality.virality_score,1) : "—"}</div>
+    </div>
+    <canvas id="tchart" width="1060" height="340"></canvas>
+    <h3>Call events (each mention = one call, own entry, own outcome)</h3>
+    ${tbl(["#","platform","account","pos","entry","net15m","MFE","MAE","result"],
+      tok.calls.map(c=>`<tr><td>${c.id}</td><td>${c.platform}</td>
+      <td><a onclick="showAccount('${c.platform}','${c.account_ref}')">@${c.account_ref}</a></td><td>${c.position_in_cycle}</td>
+      <td>${c.entry_error?'<span class="err">'+c.entry_error+'</span>':fmt$(c.entry_price)}</td>
+      <td class="${cls(c.classification_net)}">${fmtPct(c.net_return_15m)}</td><td class="win">${fmtPct(c.mfe_15m)}</td>
+      <td class="loss">${fmtPct(c.mae_15m)}</td><td class="${cls(c.classification_net)}">${c.classification_net||(c.monitoring_complete?"—":"⏳")}</td></tr>`))}
+    <p class="muted">Milestone audit record: <a href="/api/milestone/${tok.calls[0]?tok.calls[0].id:0}" target="_blank">/api/milestone/${tok.calls[0]?tok.calls[0].id:""}</a></p>`;
+  drawTimeline(tl);
+}
+
+function drawTimeline(tl){
+  const cv = document.getElementById("tchart"); if(!cv) return;
+  const ctx = cv.getContext("2d"); const W=cv.width, H=cv.height, P=34;
+  ctx.clearRect(0,0,W,H);
+  const prices = tl.prices.filter(p=>p.price_usd>0);
+  if(!prices.length){ ctx.fillStyle="#6b7d93"; ctx.fillText("no price observations yet", P, H/2); return; }
+  const t0 = prices[0].ts, t1 = Math.max(...prices.map(p=>p.ts), ...tl.calls.map(c=>c.system_detection_ts));
+  const pMax = Math.max(...prices.map(p=>p.price_usd)), pMin = Math.min(...prices.map(p=>p.price_usd));
+  const X = t => P + (t - t0) / Math.max(t1 - t0, 1) * (W - 2*P);
+  const Y = p => H - P - (p - pMin) / Math.max(pMax - pMin, 1e-18) * (H - 2*P);
+  // social state bands
+  const stateColor = {VIRAL:"rgba(61,220,151,.08)",ACCELERATING:"rgba(61,220,151,.05)",COORDINATED:"rgba(183,140,255,.10)",DECAYING:"rgba(255,92,108,.07)",DEAD:"rgba(255,92,108,.10)",SATURATED:"rgba(255,180,84,.07)"};
+  tl.states.forEach((s,i)=>{
+    const end = tl.states[i+1] ? tl.states[i+1].ts : t1;
+    ctx.fillStyle = stateColor[s.state] || "transparent";
+    ctx.fillRect(X(s.ts), P, X(end)-X(s.ts), H-2*P);
+    ctx.fillStyle = "#6b7d93"; ctx.font = "9px monospace"; ctx.fillText(s.state, X(s.ts)+3, P+9);
+  });
+  // price line
+  ctx.strokeStyle = "#4da3ff"; ctx.lineWidth = 1.5; ctx.beginPath();
+  prices.forEach((p,i)=> i?ctx.lineTo(X(p.ts),Y(p.price_usd)):ctx.moveTo(X(p.ts),Y(p.price_usd)));
+  ctx.stroke();
+  // call markers
+  tl.calls.forEach(c=>{
+    const px = tl.prices.filter(p=>Math.abs(p.ts-c.system_detection_ts)<20 && p.price_usd)[0];
+    const y = px ? Y(px.price_usd) : H-P;
+    ctx.fillStyle = c.platform==="x" ? "#ffb454" : "#b78cff";
+    if(c.is_copy||c.is_repost) ctx.globalAlpha=.4;
+    ctx.beginPath(); ctx.arc(X(c.system_detection_ts), y, 4, 0, 7); ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.fillStyle="#d6e2f0"; ctx.font="9px monospace";
+    ctx.fillText("@"+c.account_ref.slice(0,10), X(c.system_detection_ts)+5, y-5);
+  });
+  // axes
+  ctx.strokeStyle="#1e2937"; ctx.strokeRect(P,P,W-2*P,H-2*P);
+  ctx.fillStyle="#6b7d93"; ctx.font="10px monospace";
+  ctx.fillText(fmt$(pMax), 2, P+4); ctx.fillText(fmt$(pMin), 2, H-P);
+  ctx.fillText("T0", P, H-8); ctx.fillText("+"+((t1-t0)/60|0)+"m", W-P-30, H-8);
+  ctx.fillStyle="#ffb454"; ctx.fillText("● X call", W-140, 16);
+  ctx.fillStyle="#b78cff"; ctx.fillText("● TG call", W-70, 16);
+}
+
+async function showAccount(platform, ref){
+  const a = await api(`/api/account/${platform}/${ref}`);
+  if(!a || a.error) return;
+  const s = a.statistics || {};
+  $("#detail").style.display = "block";
+  $("#detailInner").innerHTML = `
+    <span class="close" onclick="document.getElementById('detail').style.display='none'">✕ close</span>
+    <h2>@${ref} <span class="muted">${platform}</span> <span class="state">${s.role_label||"UNCLASSIFIED"}</span></h2>
+    <div class="kv">
+      <div><span>total calls</span>${s.total_calls??0}</div>
+      <div><span>unique tokens</span>${s.unique_tokens_called??0}</div>
+      <div><span>net win rate</span>${fmtPct(s.net_win_rate)} (n=${s.sample_size??0})</div>
+      <div><span>median 15m</span>${fmtPct(s.median_return_15m)}</div>
+      <div><span>avg MFE / MAE</span>${fmtPct(s.avg_mfe)} / ${fmtPct(s.avg_mae)}</div>
+      <div><span>avg position in cycle</span>${fmtN(s.avg_position_in_cycle,1)}</div>
+      <div><span>avg sec after first detection</span>${fmtN(s.avg_seconds_after_first_detection,0)}s</div>
+      <div><span>% calls before price peak</span>${fmtPct(s.pct_calls_before_price_peak)}</div>
+      <div><span>marginal MFE effect*</span>${fmtPct(s.marginal_mfe_effect)} (n=${s.marginal_sample??0})</div>
+      <div><span>95% CI (15m net)</span>${fmtPct(s.ci95_low_15m)} … ${fmtPct(s.ci95_high_15m)}</div>
+      <div><span>rugs / unpriceable</span>${s.rugged??0} / ${s.unpriceable??0}</div>
+    </div>
+    <p class="muted">* association only — median MFE when joining an already-running push vs comparable pushes without this account. Not causation.</p>
+    <h3>Recent calls</h3>
+    ${tbl(["mint","pos","net15m","MFE","result","when"],
+      (a.recent_calls||[]).map(c=>`<tr><td><a onclick="showToken('${c.mint}')">${shortMint(c.mint)}</a></td><td>${c.position_in_cycle}</td>
+      <td class="${cls(c.classification_net)}">${fmtPct(c.net_return_15m)}</td><td>${fmtPct(c.mfe_15m)}</td>
+      <td class="${cls(c.classification_net)}">${c.classification_net||"⏳"}</td><td>${ago(c.system_detection_ts)} ago</td></tr>`))}`;
+}
+
+function tick(){
+  $("#clock").textContent = new Date().toLocaleTimeString();
+  loadOverview(); loadSections();
+}
+tick(); setInterval(tick, 15000);
+</script>
+</body>
+</html>

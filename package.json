@@ -1,0 +1,7 @@
+{
+  "name": "solana-social-engine",
+  "private": true,
+  "scripts": {
+    "dev": "SSE_DB_PATH=data/engine_live.db python3 run.py serve --port ${PORT:-7100}"
+  }
+}
