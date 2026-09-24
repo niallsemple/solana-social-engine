@@ -7,6 +7,12 @@ T+1m / 5m / 15m / 30m / 60m after each mention — gross **and** net of realisti
 **No trading. No backfilled history mixed with forward data. T0 = the moment _this system_
 first detects the contract.**
 
+---
+
+> **🔬 Follow the build:** this engine is being improved in public — forward-validation
+> results, strategy A/Bs, and every dead end included.
+> **[Follow @darwinlabs on X](https://x.com/darwinlabs)** to watch it evolve.
+
 ## Quick start
 
 ```bash
@@ -129,3 +135,14 @@ Solana tx + priority fees amortized over $1,000 notional · entry/exit latency r
   mid-price endpoint); every observation is labeled with its source
 - Control-group matching (random comparable memecoins) is schema-ready but not yet populated
 - SQLite for local-first operation; schema is PostgreSQL-compatible for migration
+
+---
+
+## Follow along
+
+This is an active research project — new detection signals, paper-strategy results, and
+honest post-mortems ship as they happen. If you're into memecoin microstructure,
+social-signal trading, or building measurement-first tooling:
+
+**👉 [Follow @darwinlabs on X](https://x.com/darwinlabs)** — improvements to this repo are
+announced there first.
